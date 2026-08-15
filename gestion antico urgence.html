@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>App : Gestion Anticoagulation</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --danger: #e74c3c;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 15px;
+        }
+        .container {
+            max-width: 100%;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccd1d9;
+            border-radius: 8px;
+            font-size: 16px; /* Empêche le zoom auto sur iOS */
+            background-color: #fff;
+            box-sizing: border-box;
+            appearance: auto;
+        }
+        button {
+            width: 100%;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+        }
+        button:active {
+            background-color: #2980b9;
+            transform: translateY(2px);
+        }
+        .hidden {
+            display: none !important;
+        }
+        #result-container {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-left: 5px solid var(--secondary);
+            border-radius: 8px;
+        }
+        #result-title {
+            color: var(--primary);
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+        .disclaimer {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            text-align: justify;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🩸 Anticoagulants & Urgences</h1>
+    
+    <div class="form-group">
+        <label for="context">1. Contexte Clinique :</label>
+        <select id="context" onchange="updateForm()">
+            <option value="">-- Touchez pour choisir --</option>
+            <option value="hemorragie">Hémorragie sous anticoagulant</option>
+            <option value="surdosage">Surdosage asymptomatique / Intoxication</option>
+            <option value="procedure">Procédure invasive (< 48h)</option>
+            <option value="avc">AVC ischémique</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="drug">2. Anticoagulant du patient :</label>
+        <select id="drug" onchange="updateForm()">
+            <option value="">-- Touchez pour choisir --</option>
+            <option value="avk">AVK</option>
+            <option value="dabigatran">Dabigatran (AOD anti-IIa)</option>
+            <option value="antixa">AOD anti-Xa (Rivaroxaban, Apixaban...)</option>
+            <option value="hnf">HNF curative</option>
+            <option value="hbpm">HBPM curative</option>
+            <option value="fondaparinux">Fondaparinux curatif</option>
+        </select>
+    </div>
+
+    <!-- Options dynamiques -->
+    <div id="div-severity" class="form-group hidden">
+        <label for="severity">3. Gravité de l'Hémorragie :</label>
+        <select id="severity">
+            <option value="">-- Touchez pour choisir --</option>
+            <option value="non_grave">Non Grave</option>
+            <option value="grave">Grave (Instabilité, organe noble...)</option>
+        </select>
+    </div>
+
+    <div id="div-risk" class="form-group hidden">
+        <label for="risk">3. Risque Hémorragique du Geste :</label>
+        <select id="risk">
+            <option value="">-- Touchez pour choisir --</option>
+            <option value="faible">Faible (sonde, ponction ascite...)</option>
+            <option value="eleve">Élevé (chirurgie, PL, rachianesthésie...)</option>
+        </select>
+    </div>
+
+    <!-- Bouton d'action explicite pour mobile -->
+    <button id="btn-submit" class="hidden" onclick="generateResult()">Afficher la conduite à tenir</button>
+
+    <div id="result-container" class="hidden">
+        <h3 id="result-title">Recommandations :</h3>
+        <div id="result-content"></div>
+    </div>
+
+    <div class="disclaimer">
+        <strong>Attention :</strong> Outil basé sur les RFE SFMU/SFAR/GIHP 2024. Ne remplace pas le jugement clinique.
+    </div>
+</div>
+
+<script>
+    function updateForm() {
+        const context = document.getElementById('context').value;
+        const drug = document.getElementById('drug').value;
+        const btn = document.getElementById('btn-submit');
+        
+        document.getElementById('div-severity').classList.add('hidden');
+        document.getElementById('div-risk').classList.add('hidden');
+        document.getElementById('result-container').classList.add('hidden');
+        btn.classList.add('hidden');
+        
+        if (context && drug) {
+            if (context === 'hemorragie') {
+                document.getElementById('div-severity').classList.remove('hidden');
+                btn.classList.remove('hidden');
+            } else if (context === 'procedure') {
+                document.getElementById('div-risk').classList.remove('hidden');
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.remove('hidden');
+            }
+        }
+    }
+
+    function generateResult() {
+        const context = document.getElementById('context').value;
+        const drug = document.getElementById('drug').value;
+        const severity = document.getElementById('severity').value;
+        const risk = document.getElementById('risk').value;
+        
+        const resultContainer = document.getElementById('result-container');
+        const resultContent = document.getElementById('result-content');
+        
+        let html = "";
+
+        if (context === 'hemorragie') {
+            if (!severity) { alert("Veuillez sélectionner la gravité."); return; }
+            if (severity === 'non_grave') {
+                html = "<ul><li><strong>Action :</strong> Traitement symptomatique et hémostase locale.</li><li><strong>Réversion :</strong> Ne pas réverser l'anticoagulation.</li><li>Vérifier les doses et la fonction rénale.</li></ul>";
+            } else if (severity === 'grave') {
+                html = "<h4>Action immédiate :</h4><ul><li>Geste hémostatique et Acide tranexamique.</li><li>Si hémorragie intracrânienne : réversion SANS attendre la biologie.</li></ul><h4>Spécifique :</h4><ul>";
+                if (drug === 'avk') html += "<li>Mesurer l'INR. Si > 1,5 (ou > 1,2 si neuro) : <strong>CCP + Vitamine K 10 mg</strong>.</li>";
+                else if (drug === 'dabigatran') html += "<li>Mesurer concentration. Si > 50 ng/mL (> 30 si neuro) : <strong>Idarucizumab 5 g IV</strong>.</li>";
+                else if (drug === 'antixa') html += "<li>Mesurer concentration. Si > 50 ng/mL (> 30 si neuro) : <strong>CCP 25-50 UI/kg</strong>.</li>";
+                else if (drug === 'hnf') html += "<li>Arrêter HNF. <strong>Sulfate de protamine</strong> selon dose. Ne pas antagoniser si anti-Xa < 0,2 UI/mL.</li>";
+                else if (drug === 'hbpm') html += "<li>Arrêter HBPM. Discuter <strong>Protamine</strong>. Ne pas antagoniser si anti-Xa < 0,2 UI/mL.</li>";
+                else if (drug === 'fondaparinux') html += "<li>Discuter <strong>CCP</strong> ou facteur VIIa.</li>";
+                html += "</ul>";
+            }
+        } else if (context === 'surdosage') {
+            if (drug === 'avk') {
+                html = "<ul><li><strong>INR 4-6 (Cible 2,5) :</strong> Saut d'une prise.</li><li><strong>INR 6-10 (Cible 2,5) :</strong> Saut d'une prise + Vitamine K 2 mg per os.</li><li><strong>INR > 10 :</strong> Arrêt + Vitamine K 5 mg per os.</li><li><span style='color:red;'>Jamais de CCP ni plasma.</span></li></ul>";
+            } else if (drug === 'dabigatran' || drug === 'antixa') {
+                html = "<ul><li>Surdosage > 400 ng/mL : Surveillance <strong>sans réversion</strong>.</li><li>Intoxication massive < 8h : Discuter charbon activé.</li></ul>";
+            } else {
+                html = "<ul><li>Il n'est pas recommandé de réverser le traitement asymptomatique.</li></ul>";
+            }
+        } else if (context === 'procedure') {
+            if (!risk) { alert("Veuillez sélectionner le risque."); return; }
+            if (risk === 'faible') {
+                html = "<ul><li>Réaliser la procédure sans arrêter ni réverser. Vérifier absence de surdosage si HNF/AVK.</li></ul>";
+            } else if (risk === 'eleve') {
+                html = "<div style='background:#f8d7da; padding:10px; border-radius:5px;'><strong>⚠️ ALERTE :</strong> Gestes Neuraxiaux contre-indiqués sous AOD anti-Xa, HBPM, Fondaparinux, HNF (même après réversion). Sous AVK/Dabi : uniquement si indispensable après réversion vérifiée.</div><ul>";
+                if (drug === 'avk') html += "<li>Urgente (< 12h) & INR > 1,5 : <strong>CCP + Vitamine K 5 mg</strong>.</li><li>Semi-urgente (> 12h) : <strong>Vitamine K 5 mg</strong>.</li>";
+                else if (drug === 'dabigatran') html += "<li>Si conc. > 50 ng/mL (> 30 si neuro) : <strong>Idarucizumab 5 g IV</strong>.</li>";
+                else if (drug === 'antixa') html += "<li>Si conc. > 50 ng/mL : Discuter <strong>CCP 25-50 UI/kg</strong>.</li>";
+                else if (drug === 'hnf' || drug === 'hbpm') html += "<li>Si anti-Xa > 0,2 UI/mL : Discuter <strong>Sulfate de protamine</strong>.</li>";
+                else if (drug === 'fondaparinux') html += "<li>Discuter CCP ou facteur VIIa.</li>";
+                html += "</ul>";
+            }
+        } else if (context === 'avc') {
+            html = "<ul>";
+            if (drug === 'avk') html += "<li>INR ≤ 1,7 : <strong>Thrombolyse possible</strong>.</li><li>INR > 1,7 : <span style='color:red;'>Contre-indication</span> (même après CCP).</li>";
+            else if (drug === 'antixa') html += "<li>< 50 ng/mL : <strong>Thrombolyse possible</strong>.</li><li>≥ 100 ng/mL : <span style='color:red;'>Contre-indication</span>.</li>";
+            else if (drug === 'dabigatran') html += "<li>< 50 ng/mL (ou TT<60s) : <strong>Thrombolyse possible</strong>.</li><li>≥ 50 ng/mL : Uniquement après <strong>Idarucizumab 5 g IV</strong>.</li>";
+            else html += "<li><span style='color:red;'>Ne pas réaliser de thrombolyse IV.</span></li>";
+            html += "</ul><p><em>La thrombectomie doit être envisagée en cas d'occlusion proximale.</em></p>";
+        }
+
+        resultContent.innerHTML = html;
+        resultContainer.classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
